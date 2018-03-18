@@ -71,7 +71,7 @@ The scan step takes full `a4` sized scans of your flatbed. The next step is to s
 There are automatic tools that can do this task [example split.sh](split.sh), but I've found it difficult to get it 100%, especially when scanning photos without removing them from the album page so there isn't a perfect white background.
 
 Instead here is a custom tool written in Python with OpenCV to do the splitting
-with some manual assistance
+with some manual assistance. It offers automatically detected crops for approval, but if incorrect they can be done manually.
 
 [Link to split.py](split.py)
 
@@ -87,12 +87,14 @@ Run `split.py` and pass all scanned images to split as arguments
 
 An OpenCV window will open.
 
-- Click each of the 4 corners of the photo to place a marker there
-- On the last corner, hold down the mouse to visualize the cropping rectangle
-- The rectangle will be the smallest possible rectangle which contains all of the points (your markers might not be perfectly at the corners, but they will be contained)
-- When the photo is ready, press `spacebar` to finalize that photo
-- Repeat on the next photo until all are set
-- When all photos are ready. Press `enter` to save the photos to disk and load the next photo
+1. Red rectangles will outline each automatically detected crop. If these are already correct, skip to 8
+2. Press `backspace` to remove any incorrect automatic crops (or edit the python script to make it detect better for your thresholds)
+3. Click each of the 4 corners of the photo to place a marker there
+4. On the last corner, hold down the mouse to visualize the cropping rectangle
+5. The rectangle will be the smallest possible rectangle which contains all of the points (your markers might not be perfectly at the corners, but they will be contained)
+6. When the photo is ready, press `spacebar` to finalize that photo
+7. Repeat 3-6 on the next photo until all are set
+8. When all photos are ready. Press `enter` to save the photos to disk and load the next photo
 
 Other controls:
 

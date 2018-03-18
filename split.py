@@ -48,8 +48,35 @@ def load_image():
   canvas[left_offset : left_offset + img.shape[0], top_offset : top_offset + img.shape[1]] = img
   global draw_canvas
   draw_canvas = cv2.resize(canvas, (draw_size, draw_size))
+  guess_rects()
   render()
 
+def guess_rects():
+  gray = cv2.cvtColor(draw_canvas, cv2.COLOR_BGR2GRAY)
+  ret, result = cv2.threshold(gray,200,255,0)
+  kernel = np.ones((5,5),np.uint8)
+  result = cv2.dilate(result, kernel, iterations = 1)
+  result = cv2.erode(result, kernel, iterations = 1)
+  result = cv2.dilate(result, kernel, iterations = 1)
+
+  im2, contours, hierarchy = cv2.findContours(result,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+  for cnt in contours:
+    area = cv2.contourArea(cnt)
+    # sane-ish size
+    if area < draw_canvas.shape[0] * draw_canvas.shape[1] * .9 and area > 100 * 100:
+      rect = cv2.minAreaRect(cnt)
+      center, size, theta = rect
+      t = math.fabs(theta)
+      # sane rotation
+      if t < 20 or t > 70:
+        # sufficient width and height
+        if size[0] > draw_canvas.shape[0] * 0.05 and size[1] > draw_canvas.shape[1] * 0.05:
+          # sane aspect ratio
+          if size[0] / size[1] < 3 or size[1] / size[0] < 3:
+            rects.append(rect)
+
+  #cv2.drawContours(draw_canvas, contours, -1, (0,255,0), 3)
+  #cv2.imshow('thresh',thresh)
 
 def render():
   img = draw_canvas.copy()
