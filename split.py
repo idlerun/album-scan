@@ -23,11 +23,21 @@ cv2.namedWindow('image', cv2.WINDOW_NORMAL)
 cv2.resizeWindow('image', draw_size, draw_size)
 cv2.moveWindow('image', 0, 0);
 
+thresh = 210
+blur = 5
 
 path = None
 canvas = None
 draw_canvas = None
 draw_scale = 1
+
+# 0 = normal, 1 = operating channel, 2 = thresh
+view_mode_str = ['NORMAL', 'OPERATING', 'THRESH']
+view_mode = 0
+
+# 0 = bgr2gray, 1=blue, 2=green, 3=red
+auto_channel_str = ['GRAY', 'BLUE', 'GREEN', 'RED']
+auto_channel = 0
 
 points = []
 active_point = None
@@ -47,19 +57,62 @@ def load_image():
   top_offset = round((canvas_size - img.shape[1])/2)
   canvas[left_offset : left_offset + img.shape[0], top_offset : top_offset + img.shape[1]] = img
   global draw_canvas
+  global draw_canvas_gray
   draw_canvas = cv2.resize(canvas, (draw_size, draw_size))
+  re_guess_rects()
+
+def auto_channel_img():
+  if auto_channel == 0:
+    return cv2.cvtColor(draw_canvas, cv2.COLOR_BGR2GRAY)
+  elif auto_channel == 1:
+    return draw_canvas[:,:,0]
+  elif auto_channel == 2:
+    return draw_canvas[:,:,1]
+  elif auto_channel == 3:
+    return draw_canvas[:,:,2]
+
+def gen_thresh():
+  img = auto_channel_img()
+  ret, result = cv2.threshold(img, thresh, 255, cv2.THRESH_BINARY)
+  kernel = np.ones((5,5),np.uint8)
+  result = cv2.dilate(result, kernel, iterations = 1)
+  result = cv2.erode(result, kernel, iterations = 1)
+  if blur > 0:
+     #result = cv2.GaussianBlur(result, (blur,blur), 0)
+    result = cv2.medianBlur(result, blur)
+    ret, result = cv2.threshold(result, thresh, 255, cv2.THRESH_BINARY)
+  #kernel = cv2.getStructuringElement()
+  #kernel = np.ones((5,5),np.uint8)
+  #result = cv2.dilate(result, kernel, iterations = 1)
+  #result = cv2.erode(result, kernel, iterations = 1)
+  #result = cv2.dilate(result, kernel, iterations = 1)
+  return result
+
+def adjust_guess(t, b):
+  global thresh
+  global blur
+  if t > 255:
+    t = 255
+  elif t < 0:
+    t = 0
+  if b < 0:
+    b = 0
+  elif b == 2:
+    b = 1
+  thresh = t
+  blur = b
+  re_guess_rects()
+
+def re_guess_rects():
+  del points[:]
+  del rects[:]
   guess_rects()
   render()
 
 def guess_rects():
-  gray = cv2.cvtColor(draw_canvas, cv2.COLOR_BGR2GRAY)
-  ret, result = cv2.threshold(gray,200,255,0)
-  kernel = np.ones((5,5),np.uint8)
-  result = cv2.dilate(result, kernel, iterations = 1)
-  result = cv2.erode(result, kernel, iterations = 1)
-  result = cv2.dilate(result, kernel, iterations = 1)
-
-  im2, contours, hierarchy = cv2.findContours(result,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+  log.info("guess_rects thresh=%d, blur=%d", thresh, blur)
+  result = gen_thresh()
+  im2, contours, hierarchy = cv2.findContours(result, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
   for cnt in contours:
     area = cv2.contourArea(cnt)
     # sane-ish size
@@ -72,20 +125,41 @@ def guess_rects():
         # sufficient width and height
         if size[0] > draw_canvas.shape[0] * 0.05 and size[1] > draw_canvas.shape[1] * 0.05:
           # sane aspect ratio
-          if size[0] / size[1] < 3 or size[1] / size[0] < 3:
+          if size[0] / size[1] < 3 and size[1] / size[0] < 3:
             rects.append(rect)
 
   #cv2.drawContours(draw_canvas, contours, -1, (0,255,0), 3)
   #cv2.imshow('thresh',thresh)
 
+def put_line(img, line, text):
+  y = 18 + 25 * line
+  cv2.putText(img, text, (0, y), cv2.FONT_HERSHEY_TRIPLEX, .7, (0,0,0), 1, cv2.FILLED)
+
 def render():
-  img = draw_canvas.copy()
+  if view_mode == 0:
+    img = draw_canvas.copy()
+  elif view_mode == 1:
+    # show thresh operating canvas
+    t = auto_channel_img()
+    img = cv2.merge((t,t,t))
+  elif view_mode == 2:
+    # show thresh as b/w
+    t = gen_thresh()
+    img = cv2.merge((t,t,t))
+
   for p in points:
     cv2.circle(img, p, 6, color=(0,255,0), thickness=2, lineType=8, shift=0)
 
+  put_line(img, 0, 'File %d/%d: %s' % (file_idx, len(sys.argv)-1, basename(path)))
+  put_line(img, 1, 'Threshold: %d' % thresh)
+  put_line(img, 2, 'Blur: %d' % blur)
+  put_line(img, 3, 'View: %s' % view_mode_str[view_mode])
+  put_line(img, 4, 'Channel: %s' % auto_channel_str[auto_channel])
+
   draw_rects = rects[:]
 
-  log.info("active_point %s", active_point)
+  if active_point:
+    log.info("active_point %s", active_point)
   if active_point:
     cv2.circle(img, active_point, 6, color=(200,100,0), thickness=1, lineType=8, shift=0)
     if len(points) == 3:
@@ -96,7 +170,7 @@ def render():
   for r in draw_rects:
     box = cv2.boxPoints(r)
     box = np.int0(box)
-    cv2.drawContours(img, [box], 0, (100, 100, 255), 2)
+    cv2.drawContours(img, [box], 0, (100, 100, 255), 1)
   cv2.imshow('image', img)
   
 
@@ -167,6 +241,26 @@ while 1:
   if k == 27 or k == 113:
     # escape or q
     sys.exit(0)
+  elif k == 119:
+    # up with w
+    adjust_guess(thresh+2, blur)
+  elif k == 115:
+    # down with s
+    adjust_guess(thresh-2, blur)
+  elif k == 97:
+    # less blur with a
+    adjust_guess(thresh, blur - 2)
+  elif k == 100:
+    # more blur with d
+    adjust_guess(thresh, blur + 2)
+  elif k == 118:
+    # v
+    view_mode = (view_mode + 1) % 3
+    render()
+  elif k == 99:
+    # c
+    auto_channel = (auto_channel + 1) % 4
+    re_guess_rects()
   elif k == 13:
     # enter
     log.info("enter")
@@ -178,7 +272,6 @@ while 1:
       load_next()
     else:
       log.info("Ignoring enter because len(rects)=%d and len(points)=%d", len(rects), len(points))
-    
   elif k == 98:
     # 'b' for back
     file_idx = file_idx - 1
