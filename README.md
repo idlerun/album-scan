@@ -114,3 +114,28 @@ Other controls:
 
 
 ![](split.png)
+
+## Next Steps
+
+For uploading the cropped photos to a site like Google Photos, it may be useful to have them group by date according to the album they are in to allow for easy batch upload and organization.
+
+This script will edit the modification times of the photos to get them categorized into individual days.
+
+`~/.bin/incr_dates` [incr_dates]
+
+```
+if [[ -z $DAY ]]; then
+  echo >&2 "Usage: DAY=8 $0 [... file names]"
+  exit 1
+fi
+
+i=720
+for f in "$@"; do
+  hour=$((i/60))
+  min=$((i%60))
+  stamp=$(printf "198001%02d%02d%02d" $DAY $hour $min)
+  echo $stamp $f
+  touch -mt $stamp $f
+  i=$((i+1))
+done
+```
