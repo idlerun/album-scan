@@ -96,11 +96,21 @@ An OpenCV window will open.
 7. Repeat 3-6 on the next photo until all are set
 8. When all photos are ready. Press `enter` to save the photos to disk and load the next photo
 
+Auto-crop Controls:
+
+- `w` to increase auto-crop threshold (and retry auto-crop)
+- `s` to decrease auto-crop threshold
+- `d` to increase auto-crop blurring
+- `a` to decrease auto-crop blurring
+- `v` to cycle available view modes
+- `c` to cycle cropping channels
+
 Other controls:
 
 - `backspace` to undo the last marker or cropping rectange
 - `b` to go back to previous photo
 - `n` to go to the next photo
 - `q` or `esc` to quit
+
 
 ![](split.png)
