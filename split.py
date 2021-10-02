@@ -264,7 +264,7 @@ while 1:
     # c
     auto_channel = (auto_channel + 1) % 4
     re_guess_rects()
-  elif k == 13:
+  elif k == 13 or k == 10:
     # enter
     log.info("enter")
     if len(rects) > 0 and len(points) == 0:
