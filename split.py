@@ -212,7 +212,9 @@ def do_crops():
   idx = 0
   for r in rects:
     idx = idx + 1
-    name = "%s_%d.jpg" % (splitext(basename(path))[0], idx)
+    imagesuffix = splitext(basename(path))[1]
+    log.info("codec: {}".format(imagesuffix))
+    name = "%s_%d%s" % (splitext(basename(path))[0], idx, imagesuffix)
     log.info("name %s", name)
     # tan = opp / agj
     center, size, theta = r
@@ -222,7 +224,8 @@ def do_crops():
     rotated = rotate(canvas, scaled_center, theta)
     cropped = cv2.getRectSubPix(rotated, scaled_size, scaled_center)
     #cv2.imshow('image', cropped)
-    cv2.imwrite(name, cropped, [int(cv2.IMWRITE_JPEG_QUALITY), 98])
+    codecoptions =  [int(cv2.IMWRITE_JPEG_QUALITY), 98]  if imagesuffix == ".jpg" or imagesuffix == ".jpeg" else []
+    cv2.imwrite(name, cropped, codecoptions)
 
 file_idx = 1
 
@@ -261,7 +264,7 @@ while 1:
     # c
     auto_channel = (auto_channel + 1) % 4
     re_guess_rects()
-  elif k == 13:
+  elif k == 13 or k == 10:
     # enter
     log.info("enter")
     if len(rects) > 0 and len(points) == 0:
